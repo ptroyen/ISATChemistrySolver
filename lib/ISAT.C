@@ -25,17 +25,20 @@ License
 
 #include "ISAT.H"
 #include "specie.H"
-#include "chemistryModel.H"
+// #include "chemistryModel.H"
+
+#include "StandardChemistryModel.H"
+#include "thermodynamicConstants.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class ChemistryModel>
 Foam::ISAT<ChemistryModel>::ISAT
 (
-    const fvMesh& mesh
+   typename ChemistryModel::reactionThermo& thermo
 )
 :
-    chemistrySolver<ChemistryModel>(mesh),
+    chemistrySolver<ChemistryModel>(thermo),
     coeffsDict_(this->subDict("ISATCoeffs")),
     W_(this->nSpecie()),
     href_(this->nSpecie()),
@@ -55,9 +58,9 @@ Foam::ISAT<ChemistryModel>::ISAT
             this->specieThermo()[i].hc()
           - this->specieThermo()[i].cp
             (
-                specie::Pstd,
-                specie::Tstd
-            )*specie::Tstd
+                constant::thermodynamic::Pstd,
+                constant::thermodynamic::Tstd
+            )*constant::thermodynamic::Tstd
         );
     }
 
@@ -104,7 +107,8 @@ Foam::ISAT<ChemistryModel>::ISAT
             {
                 f.close();
                 const specie& spec = this->specieThermo()[0];
-                const volScalarField& p = mesh.lookupObject<volScalarField>("p");
+                // const volScalarField& p = this->mesh.lookupObject<volScalarField>("p");
+                const volScalarField& p = this->thermo().p();
                 std::ofstream streamsFile("streams.in");
                 streamsFile << "MODECI         ISAT_DI" << std::endl;
                 streamsFile << "STREAM BEGIN DUMMY [MOLE]" << std::endl;
