@@ -8,6 +8,8 @@
 License
     Copyright (C) 2014 Karl-Johan Nogenmyr
 
+    -> edited to work on OF-6
+
     OpenFOAM is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -24,41 +26,59 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "chemistrySolver.H"
-#include "chemistryModel.H"
 
-#include "noChemistrySolver.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "StandardChemistryModel.H"
+#include "TDACChemistryModel.H"
+
 #include "ISAT.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#define makeChemistrySolverType(SS, Comp, Thermo)                             \
-                                                                              \
-    typedef SS<chemistryModel<Comp, Thermo> > SS##Comp##Thermo;               \
-                                                                              \
-    defineTemplateTypeNameAndDebugWithName                                    \
-    (                                                                         \
-        SS##Comp##Thermo,                                                     \
-        (#SS"<" + word(Comp::typeName_())                                     \
-      + "," + Thermo::typeName() + ">").c_str(),                              \
-        0                                                                     \
-    );                                                                        \
-                                                                              \
-    addToRunTimeSelectionTable                                                \
-    (                                                                         \
-        Comp,                                                                 \
-        SS##Comp##Thermo,                                                     \
-        fvMesh                                                                \
-    );
+#define makeChemistrySolverType(SS, Comp, Thermo)                              \
+                                                                               \
+    typedef SS<StandardChemistryModel<Comp, Thermo>> SS##Comp##Thermo;         \
+                                                                               \
+    defineTemplateTypeNameAndDebugWithName                                     \
+    (                                                                          \
+        SS##Comp##Thermo,                                                      \
+        (#SS"<" + word(StandardChemistryModel<Comp, Thermo>::typeName_()) + "<"\
+        + word(Comp::typeName_()) + "," + Thermo::typeName() + ">>").c_str(),  \
+        0                                                                      \
+    );                                                                         \
+                                                                               \
+    BasicChemistryModel<Comp>::                                                \
+        add##thermo##ConstructorToTable<SS##Comp##Thermo>                      \
+        add##SS##Comp##Thermo##thermo##ConstructorTo##BasicChemistryModel##Comp\
+##Table_; \
+                                                                               \
+    typedef SS<TDACChemistryModel<Comp, Thermo>> TDAC##SS##Comp##Thermo;       \
+                                                                               \
+    defineTemplateTypeNameAndDebugWithName                                     \
+    (                                                                          \
+        TDAC##SS##Comp##Thermo,                                                \
+        (#SS"<" + word(TDACChemistryModel<Comp, Thermo>::typeName_()) + "<"    \
+        + word(Comp::typeName_()) + "," + Thermo::typeName() + ">>").c_str(),  \
+        0                                                                      \
+    );                                                                         \
+                                                                               \
+    BasicChemistryModel<Comp>::                                                \
+        add##thermo##ConstructorToTable<TDAC##SS##Comp##Thermo>                \
+        add##TDAC##SS##Comp##Thermo##thermo##ConstructorTo##BasicChemistryModel\
+##Comp##Table_;
 
 
-#define makeChemistrySolverTypes(CompChemModel,Thermo)                        \
-                                                                              \
-    makeChemistrySolverType                                                   \
-    (                                                                         \
-        ISAT,                                                                 \
-        CompChemModel,                                                        \
-        Thermo                                                                \
-    );                                                                        \
+#define makeChemistrySolverTypes(Comp, Thermo)                                 \
+                                                                               \
+                                                                               \
+    makeChemistrySolverType                                                    \
+    (                                                                          \
+        ISAT,                                                                  \
+        Comp,                                                                  \
+        Thermo                                                                 \
+    );   
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -66,68 +86,98 @@ License
 //#endif
 
 #include "thermoPhysicsTypes.H"
-#include "psiChemistryModel.H"
-#include "rhoChemistryModel.H"
+#include "psiReactionThermo.H"
+#include "rhoReactionThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
     // Chemistry solvers based on sensibleEnthalpy
-    makeChemistrySolverTypes(psiChemistryModel, constGasHThermoPhysics);
-    makeChemistrySolverTypes(psiChemistryModel, gasHThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, constGasHThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, gasHThermoPhysics);
     makeChemistrySolverTypes
     (
-        psiChemistryModel,
+        psiReactionThermo,
         constIncompressibleGasHThermoPhysics
     );
     makeChemistrySolverTypes
     (
-        psiChemistryModel,
-        incompressibleGasHThermoPhysics)
-    ;
-    makeChemistrySolverTypes(psiChemistryModel, icoPoly8HThermoPhysics);
-    makeChemistrySolverTypes(rhoChemistryModel, constGasHThermoPhysics);
-    makeChemistrySolverTypes(rhoChemistryModel, gasHThermoPhysics);
-    makeChemistrySolverTypes
-    (
-        rhoChemistryModel,
-        constIncompressibleGasHThermoPhysics
-    );
-    makeChemistrySolverTypes
-    (
-        rhoChemistryModel,
+        psiReactionThermo,
         incompressibleGasHThermoPhysics
     );
-    makeChemistrySolverTypes(rhoChemistryModel, icoPoly8HThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, icoPoly8HThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, constFluidHThermoPhysics);
+    makeChemistrySolverTypes
+    (
+        psiReactionThermo,
+        constAdiabaticFluidHThermoPhysics
+    );
+    makeChemistrySolverTypes(psiReactionThermo, constHThermoPhysics);
+
+    makeChemistrySolverTypes(rhoReactionThermo, constGasHThermoPhysics);
+    makeChemistrySolverTypes(rhoReactionThermo, gasHThermoPhysics);
+    makeChemistrySolverTypes
+    (
+        rhoReactionThermo,
+        constIncompressibleGasHThermoPhysics
+    );
+    makeChemistrySolverTypes
+    (
+        rhoReactionThermo,
+        incompressibleGasHThermoPhysics
+    );
+    makeChemistrySolverTypes(rhoReactionThermo, icoPoly8HThermoPhysics);
+    makeChemistrySolverTypes(rhoReactionThermo, constFluidHThermoPhysics);
+    makeChemistrySolverTypes
+    (
+        rhoReactionThermo,
+        constAdiabaticFluidHThermoPhysics
+    );
+    makeChemistrySolverTypes(rhoReactionThermo, constHThermoPhysics);
 
     // Chemistry solvers based on sensibleInternalEnergy
-    makeChemistrySolverTypes(psiChemistryModel, constGasEThermoPhysics);
-    makeChemistrySolverTypes(psiChemistryModel, gasEThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, constGasEThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, gasEThermoPhysics);
     makeChemistrySolverTypes
     (
-        psiChemistryModel,
+        psiReactionThermo,
         constIncompressibleGasEThermoPhysics
     );
     makeChemistrySolverTypes
     (
-        psiChemistryModel,
+        psiReactionThermo,
         incompressibleGasEThermoPhysics
     );
-    makeChemistrySolverTypes(psiChemistryModel, icoPoly8EThermoPhysics);
-    makeChemistrySolverTypes(rhoChemistryModel, constGasEThermoPhysics);
-    makeChemistrySolverTypes(rhoChemistryModel, gasEThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, icoPoly8EThermoPhysics);
+    makeChemistrySolverTypes(psiReactionThermo, constFluidEThermoPhysics);
     makeChemistrySolverTypes
     (
-        rhoChemistryModel,
+        psiReactionThermo,
+        constAdiabaticFluidEThermoPhysics
+    );
+    makeChemistrySolverTypes(psiReactionThermo, constEThermoPhysics);
+
+    makeChemistrySolverTypes(rhoReactionThermo, constGasEThermoPhysics);
+    makeChemistrySolverTypes(rhoReactionThermo, gasEThermoPhysics);
+    makeChemistrySolverTypes
+    (
+        rhoReactionThermo,
         constIncompressibleGasEThermoPhysics
     );
     makeChemistrySolverTypes
     (
-        rhoChemistryModel,
+        rhoReactionThermo,
         incompressibleGasEThermoPhysics
     );
-    makeChemistrySolverTypes(rhoChemistryModel, icoPoly8EThermoPhysics);
+    makeChemistrySolverTypes(rhoReactionThermo, icoPoly8EThermoPhysics);
+    makeChemistrySolverTypes(rhoReactionThermo, constFluidEThermoPhysics);
+    makeChemistrySolverTypes
+    (
+        rhoReactionThermo,
+        constAdiabaticFluidEThermoPhysics
+    );
+    makeChemistrySolverTypes(rhoReactionThermo, constEThermoPhysics);
 }
 
 

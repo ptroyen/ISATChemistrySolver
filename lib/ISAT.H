@@ -97,9 +97,9 @@ public:
 
     // Constructors
 
-        //- Construct from mesh
-        ISAT(const fvMesh& mesh);
-
+        //- Construct from thermo
+        ISAT(typename ChemistryModel::reactionThermo& thermo);
+        
 
     //- Destructor
     virtual ~ISAT();
